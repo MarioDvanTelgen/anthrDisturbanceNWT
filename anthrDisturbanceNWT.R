@@ -5,9 +5,9 @@
 # in R packages. If exact location is required, functions will be: sim$<moduleName>$FunctionName
 defineModule(sim, list(
   name = "anthrDisturbanceNWT",
-  description = NA, #"insert module description here",
+  description = "This module updates an existing anthropogenic disturbance vector layer (base line) by adding features using a feature scheduler", #"insert module description here",
   keywords = NA, # c("insert key words here"),
-  authors = c(person(c("First", "Middle"), "Last", email = "email@example.com", role = c("aut", "cre"))),
+  authors = c(person(c("Mario", "Dennis"), "van Telgen", email = "mario.vantelgen@outlook.com", role = c("aut", "cre"))),
   childModules = character(0),
   version = list(SpaDES.core = "0.2.5", anthrDisturbanceNWT = "0.0.1"),
   spatialExtent = raster::extent(rep(NA_real_, 4)),
@@ -27,7 +27,8 @@ defineModule(sim, list(
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
     expectsInput(objectName="studyArea", objectClass="SpatialPolygonsDataFrame", desc="SPDF of study area"),
-    expectsInput(objectName = "anthrDisturb", objectClass = NA, desc = NA, sourceURL = NA)
+    expectsInput(objectName = "anthrDisturb", objectClass = NA, desc = NA, sourceURL = NA),
+    expectsInput(objectName = "anthrDisturbSchedule", objectClass = "dataframe", desc = "Table with object names, url and scheduled time unit used for discrete addition of anthropogenic disturbances", sourceURL = NA)
   ),
   outputObjects = bind_rows(
     #createsOutput("objectName", "objectClass", "output object description", ...),
