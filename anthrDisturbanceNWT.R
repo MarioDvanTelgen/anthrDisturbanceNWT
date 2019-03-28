@@ -18,6 +18,8 @@ defineModule(sim, list(
   reqdPkgs = list(),
   parameters = rbind(
     #defineParameter("paramName", "paramClass", value, min, max, "parameter description"),
+    defineParameter("startTime", "numeric", 0, NA, NA, "Simulation time at which to initiate aging"),
+    defineParameter(".developmentInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between development events"),
     defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
     defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
     defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
@@ -27,7 +29,7 @@ defineModule(sim, list(
   inputObjects = bind_rows(
     #expectsInput("objectName", "objectClass", "input object description", sourceURL, ...),
     expectsInput(objectName="studyArea", objectClass="SpatialPolygonsDataFrame", desc="SPDF of study area"),
-    expectsInput(objectName = "anthrDisturb", objectClass = NA, desc = NA, sourceURL = NA),
+    expectsInput(objectName="anthrDisturb", objectClass = "SpatialLinesDataFrame", desc = "Anthropogenic disturbance vector data layer"),
     expectsInput(objectName = "anthrDisturbSchedule", objectClass = "dataframe", desc = "Table with object names, url and scheduled time unit used for discrete addition of anthropogenic disturbances", sourceURL = NA)
   ),
   outputObjects = bind_rows(
@@ -43,61 +45,24 @@ doEvent.anthrDisturbanceNWT = function(sim, eventTime, eventType) {
   switch(
     eventType,
     init = {
-      ### check for more detailed object dependencies:
-      ### (use `checkObject` or similar)
-
-      # do stuff for this event
+      
       sim <- Init(sim)
 
-      # schedule future event(s)
-      sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "anthrDisturbanceNWT", "development")
+      sim <- scheduleEvent(sim, P(sim)$startTime, "anthrDisturbanceNWT", "development")
       sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "anthrDisturbanceNWT", "plot")
       sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "anthrDisturbanceNWT", "save")
     },
     plot = {
-      # ! ----- EDIT BELOW ----- ! #
-      # do stuff for this event
-
       #plotFun(sim) # uncomment this, replace with object to plot
-      # schedule future event(s)
-
-      # e.g.,
       #sim <- scheduleEvent(sim, time(sim) + P(sim)$.plotInterval, "anthrDisturbanceNWT", "plot")
-
-      # ! ----- STOP EDITING ----- ! #
     },
     save = {
-      # ! ----- EDIT BELOW ----- ! #
-      # do stuff for this event
-
-      # e.g., call your custom functions/methods here
-      # you can define your own methods below this `doEvent` function
-
-      # schedule future event(s)
-
-      # e.g.,
       # sim <- scheduleEvent(sim, time(sim) + P(sim)$.saveInterval, "anthrDisturbanceNWT", "save")
-
-      # ! ----- STOP EDITING ----- ! #
     },
     development = {
       sim <- buildRoads(sim)
-
-      sim <- scheduleEvent(sim, time(sim) + P(sim)$increment, "anthrDisturbanceNWT", "development")
-    },
-    event2 = {
-      # ! ----- EDIT BELOW ----- ! #
-      # do stuff for this event
-
-      # e.g., call your custom functions/methods here
-      # you can define your own methods below this `doEvent` function
-
-      # schedule future event(s)
-
-      # e.g.,
-      # sim <- scheduleEvent(sim, time(sim) + increment, "anthrDisturbanceNWT", "templateEvent")
-
-      # ! ----- STOP EDITING ----- ! #
+      
+      sim <- scheduleEvent(sim, time(sim) + P(sim)$.developmentInterval, "anthrDisturbanceNWT", "development")
     },
     warning(paste("Undefined event type: '", current(sim)[1, "eventType", with = FALSE],
                   "' in module '", current(sim)[1, "moduleName", with = FALSE], "'", sep = ""))
@@ -105,70 +70,55 @@ doEvent.anthrDisturbanceNWT = function(sim, eventTime, eventType) {
   return(invisible(sim))
 }
 
-## event functions
-#   - keep event functions short and clean, modularize by calling subroutines from section below.
-
-### template initialization
 Init <- function(sim) {
   # load development schedule
-  sim$anthrDisturbSchedule <- read.table(file.path(modulePath(sim, currentModule(sim)),"/data/anthrDisturbanceSchedule.txt"), header = T)
+  sim$anthrDisturbSchedule <- read.table(file.path(modulePath(sim), currentModule(sim),
+                                                   "data/anthrDisturbSchedule.txt"), header=T)
   
   return(invisible(sim))
 }
 
 ### template for save events
 Save <- function(sim) {
-  # ! ----- EDIT BELOW ----- ! #
-  # do stuff for this event
   sim <- saveFiles(sim)
 
-  # ! ----- STOP EDITING ----- ! #
   return(invisible(sim))
 }
 
 ### template for plot events
 plotFun <- function(sim) {
-  # ! ----- EDIT BELOW ----- ! #
-  # do stuff for this event
   #Plot(sim$object)
 
-  # ! ----- STOP EDITING ----- ! #
   return(invisible(sim))
 }
 
 buildRoads <- function(sim) {
-  
   # check scheduler for planned disturbances (road construction, seismic lines, etc.)
   idx <- which(sim$anthrDisturbSchedule$startTime == time(sim))
   if(length(idx) > 0){ # If any, load and add to disturbance vector layer
-    disturbToAdd <- sim$anthrDisturbSchedule[idx,]
-    as.list(inputObjects(sim, currentModule(sim))[[1]][which(inputObjects(sim, currentModule(sim))[[1]] %in% objects(sim))])
+    disturbToAdd <- lapply(idx, function(x) sim$anthrDisturbSchedule[x,])
     # get and list these input objects
       disturbToAdd <- lapply(disturbToAdd, function(x){
-        reproducible::Cache(prepInputs,
-                            url=x$url,
-                            targetFile=x$fileName,
-                            alsoExtract = "similar",
-                            studyArea = sim$studyArea,
-                            useSAcrs = TRUE,
-                            overwrite = TRUE
-        )})
-    # combine new layers with existing anthrDisturb
-    sim$anthrDisturb <- lapply(disturbToAdd, function(x) {rbind(sim$anthrDisturb, x)})
+        if(is.na(as.character(x$url))){
+        message(paste("no url provided for disturbance layer '", as.character(x$name), "'; will be ignored. Add url to 'anthrDisturbSchedule.txt'", sep=""))  
+        } else {
+          message(paste("'", as.character(x$name), "' is being prepared and added to 'anthrDisturb'", sep=""))
+          reproducible::Cache(prepInputs,
+                              url=as.character(x$url),
+                              targetFile=as.character(x$fileName),
+                              alsoExtract = "similar",
+                              studyArea = sim$studyArea,
+                              useSAcrs = TRUE,
+                              overwrite = TRUE)
+        }
+        })
+      # combine new layers with existing anthrDisturb
+      disturbToAdd[[length(disturbToAdd)+1]] <- sim$anthrDisturb
+      sim$anthrDisturb <- prepLines(disturbToAdd, template=sim$studyArea) # also works for single object
+  } else {
+    sim$anthrDisturb
   }
   
-  return(invisible(sim))
-}
-
-### template for your event2
-Event2 <- function(sim) {
-  # ! ----- EDIT BELOW ----- ! #
-  # THE NEXT TWO LINES ARE FOR DUMMY UNIT TESTS; CHANGE OR DELETE THEM.
-  # sim$event2Test1 <- " this is test for event 2. " # for dummy unit test
-  # sim$event2Test2 <- 777  # for dummy unit test
-
-
-  # ! ----- STOP EDITING ----- ! #
   return(invisible(sim))
 }
 

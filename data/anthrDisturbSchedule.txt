@@ -1,2 +1,2 @@
-"Class"	"name"	"shortName"	"startTime"	"fileName"	"url"
-"Road"	"McKenzie Valley Highway"	"MVH"	8	"proposed_mackezie_valley_highway.shp"	NA
+Class	name	shortName	startTime	fileName	url
+Road	"Proposed McKenzie Valley Highway"	propMVH	0	proposed_mackezie_valley_highway.shp	"https://drive.google.com/open?id=1XEwhi-6AVuOfnoTWBowr4wiUI3HEiMo4"

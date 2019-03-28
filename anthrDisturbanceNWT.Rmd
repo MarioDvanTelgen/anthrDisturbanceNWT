@@ -23,16 +23,15 @@ For help writing in R Markdown, see http://rmarkdown.rstudio.com/.
 ```{r module_usage}
 library(SpaDES)
 
-setPaths(modulePath = file.path("D:/GitHub/modules"))
-getPaths() # shows where the 4 relevant paths are
+# setPaths(modulePath = file.path("D:/GitHub/modules"))
+# getPaths() # shows where the 4 relevant paths are
 
 times <- list(start = 0, end = 1)
 
 parameters <- list(
   #.progress = list(type = "text", interval = 1), # for a progress bar
   anthrDisturbanceNWT = list(
-    param1 = value1, 
-    param2 = value2)
+    .developmentInterval = 1)
 )
 
 modules <- list("anthrDisturbanceNWT")
