@@ -1,13 +1,13 @@
 prepLines <- function(lines, template){
   # x: list of SpatialLines* objects
   # template: template for projection
-
+  library(sp)
   # Coerce all objects to SpatialLinesDataFrame
   objClass <- lapply(lines, class)
   targetClass <- "SpatialLinesDataFrame" # SLDF cannot be binded to SpatialLines. All data needed here? or can drop?
   idx <- which(!objClass %in% targetClass)
   if(length(idx) > 0){ # evaluate/set class
-    lines <- lapply(lines[idx], FUN= function(x) {SpatialLinesDataFrame(x, data=data.frame(1:length(x)))} )
+    lines <- lapply(lines[idx], FUN= function(x) {sp::SpatialLinesDataFrame(x, data=data.frame(1:length(x)))} )
   }
   
   # Ensure equal CRS
@@ -19,12 +19,12 @@ prepLines <- function(lines, template){
     # missing projection
     if(any(idx)) { # any with projection?
       # if(length(lines) > 1) {
-      idx <- crs != proj4string(template)
+      idx <- crs != sp::proj4string(template)
       if(any(idx)){ # any projection other than template?
-        idx <- which(crs != proj4string(template))
-        crs(lines[[idx]]) <- proj4string(template)
+        idx <- which(crs != sp::proj4string(template))
+        crs(lines[[idx]]) <- sp::proj4string(template)
       } else {
-        message("CRS of imputObjects all equal to template. No need to reproject")
+        message("CRS of imputObjects all equal to template; No need for reprojection")
       }
     } else {
       if(exists("projectCRS")) { # if no crs available, set to project crs
@@ -51,7 +51,7 @@ prepLines <- function(lines, template){
     row.names(lines[[i]]) <- as.character(as.numeric(row.names(lines[[i]])) + tmp)
     tmp <- length(lines[[i]])
   }
-
+  
   do.call(rbind, lines) # also works for single object
   
 }

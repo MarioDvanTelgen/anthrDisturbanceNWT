@@ -111,13 +111,16 @@ addDisturbance <- function(sim) {
         message(paste("no url provided for disturbance layer '", as.character(x$name), "'; will be ignored. Add url to 'anthrDisturbSchedule.txt'", sep=""))  
         } else {
           message(paste("'", as.character(x$name), "' is being prepared and added to 'anthrDisturb'", sep=""))
-          reproducible::Cache(prepInputs,
+          tmp <- reproducible::Cache(prepInputs,
                               url=as.character(x$url),
                               targetFile=as.character(x$targetFile),
                               alsoExtract = "similar",
                               studyArea = sim$studyArea,
                               useSAcrs = TRUE,
                               overwrite = TRUE)
+          idx <- which(tmp@data[,x$IDcol] == x$featureID)
+          tmp <- tmp[idx,]
+          return(tmp)
         }
         })
       # combine new layers with existing anthrDisturb
