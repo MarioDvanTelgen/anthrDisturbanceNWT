@@ -1,40 +1,46 @@
 ---
 title: "anthrDisturbanceNWT"
-author: ""
-date: "27 March 2019"
+author: "Mario D. van Telgen"
+date: "March 2019"
 output: pdf_document
 ---
 
 # Overview
 
-Provide an overview of what the module does / how to use the module.
-
-Module documentation should be written so that others can use your module.
-This is a template for module documentation, and should be changed to reflect your module.
-
-## R Markdown
-
-R Markdown syntax allows R code, outputs, and figures to be rendered in the documentation.
-
-For help writing in R Markdown, see http://rmarkdown.rstudio.com/.
+This module updates a provided anthropogenic disturbance vector layer by adding features at discrete times using a disturbance feature update scheduler.
 
 # Usage
 
 ```{r module_usage}
 library(SpaDES)
 
-# setPaths(modulePath = file.path("D:/GitHub/modules"))
+setPaths(modulePath = file.path("D:/GitHub/ADM/modules"))
 # getPaths() # shows where the 4 relevant paths are
 
 times <- list(start = 0, end = 1)
 
 parameters <- list(
   #.progress = list(type = "text", interval = 1), # for a progress bar
+  lineDensity = list(
+    # features = c("Seismic", "Road"), # all = c("Airstrip","Pipeline", "Powerline", "Railway", "Road", "Seismic", "Unknown")
+    features = c("Roads"), # all = c("Airstrip","Pipeline", "Powerline", "Railway", "Road", "Seismic", "Unknown") # use "disturbanceX" 'Roads' if lineFeatures are 
+    searchRadius = 10000, # meters; 10, 10000 (test, Roads) # sigma in gaussian, xmax in uniform
+    resolution = 250,# meters; 1, 250 (test, Roads) # eps (width and height of pixels)
+    method = "FFT", # c("FFT", "focal")
+    tileDims = rep(2, 2)**9, # c(256,256), 2319.03 @ 1024dims; 2263.36 secs @ 2048dims
+    boundaryEffect = "lethal", # only worked with method "FFT".
+    noiseRemoval = TRUE, # removes all below minimal density
+    .developmentInterval = 1,
+    .plotInitialTime = 0,
+    .plotInterval = 1,
+    .writeInitialTime = 0,
+    .writeInterval = 1),
   anthrDisturbanceNWT = list(
+    features = c("Airstrip", "Pipeline", "Powerline", "Railway", "Seismic", "Unknown"), # all = c("Airstrip","Pipeline", "Powerline", "Railway", "Road", "Seismic", "Unknown")
     .developmentInterval = 1)
 )
 
-modules <- list("anthrDisturbanceNWT")
+modules <- list("anthrDisturbanceNWT", "lineDensity")
 objects <- list()
 inputs <- list()
 outputs <- list()
@@ -42,33 +48,69 @@ outputs <- list()
 mySim <- simInit(times = times, params = parameters, modules = modules,
                  objects = objects)
 
+dev(); clearPlot()
 mySimOut <- spades(mySim)
+
+mySimOut$anthrDisturb
+mySimOut$bufferMap
+mySimOut$LFDensMap
+
 ```
 
 # Events
 
-Describe what happens for each event type.
+## Init
+During initialization the disturbance planning schedule and vector data layers are loaded.
+Features to include are selected using the `features` parameter, and if more than one feature layer is provided they are matched and merged together (see Input data section below for more information).
 
-## Plotting
+## addDisturbance
+During this event the planning schedule is consulted. Any layers with 'planTime' equal to the simulation time unit will be loaded, prepared to match the `studyArea`, and merged to the anthropogenic disturbance layer `anthrDisturb`, thus updating it.
+The current model only includes the development of McKenzie highway. Other planned disturbance features can easily be added to the simulation by including them to `/data/anthrDisturbSchedule.txt`.
 
-Write what is plotted.
-
-## Saving
-
-Write what is saved.
 
 # Data dependencies
 
 ## Input data
 
-How to obtain input data, and a description of the data required by the module.
-If `sourceURL` is specified, `downloadData("anthrDisturbanceNWT", "path/to/modules/dir")` may be sufficient.
+Expected input data:
+**anthrDisturbSchedule**: A `dataframe` object called from '/data/anthrDisturbSchedule.txt', which provides a planning schedule. The dataframe contains columns with information on scheduling ('startTime') and object descriptives ('Class', 'name', 'shortName', 'fileName' and 'url') of planned disturbances.
+
+**anthrDisturb**: A anthropogenic disturbance vector data layer. This leayer is preferably of class `SpatialLinesDataFrame`, which includes a layer-identifier column named 'Class'. If the layer is not a `SpatialLinesDataFrame` or if the column 'Class' is missing, the object will be coerced to one and a column named 'Class' will be added, respectively. In the latter case 'Class' will be assigned values equal to the original layer name. If not supplied by the user a default anthropogenic disturbance vector data layer will be loaded. 
+The default is the Boreal ecosystem anthropogenic disturbance vector data for Canada based on 2008 to 2010 Landsat imagery available at https://open.canada.ca/data/en/dataset/afd0ce47-17c3-445c-b823-2f86409da2e0.
+
+Optional input data:
+**disturbanceX**: Other disturbance layers (e.g. 'Roads') can be supplied. The projection of these layers will be matched to the default disturbance layer, and if not of class `SpatialLinesDataFrame` or if the column 'Class' is missing the same procedure as for the default disturbance layer will prepare this (and any other additional) layer so that it can be merged with the default anthropogenic disturbance layer.
+The default is the 2010 road network file of the NWT, which is available at https://open.canada.ca/data/en/dataset/ab807d3f-9112-4d67-b17b-12bf83ff81e2.
+
+**studyArea**: A `SpatialPolygons*` object deliniating the study area used to set the extent of the input data.
+The default is the BCR6 ecoregions as contained within the Northwest Territories (link).
+
 
 ## Output data
 
-Description of the module outputs.
+**anthrDisturb**: An (updated) anthropogenic disturbance vector data layer.
 
 # Links to other modules
 
-Describe any anticipated linkages to other modules.
+`anthrDisturb` can be used as input for the `lineDensity` module to calculate density per unit area (km/km2) within a given search radius, and `Buffer` to create a buffer of specific radius around each disturbance.
 
+Vegetation models (NAMES). Pixels that intersect with disturbance features can be classified as such in vegetation succession models.
+
+# Assumptions
+We assume that each linear feature is added at once. In case of the extention of the proposed McKenzie Valley highway, the whole length of the highway is created at once.
+
+# Limitations
+Currently the module only adds features. Features do not deteriorate and no other information on the features are tracked.
+
+
+# Future
+
+**Module features**
+
+- Phased disturbance feature development.
+- Deterioration of anthropogenic features can be based on 'Class' (e.g. roads vs. seismic lines) and 'subClass' (e.g. paved vs. unpaved roads).
+- Tracking and mapping of feature metrics. E.g. if feature age is tracked and a feature age raster-map created, this could be used as a metric for vegetation regeneration in disturbed areas. I.e. disturbance features do exist in the `anthrDisturb` object, but individual pixels in the vegetation map can recover, depending on feature type and age, and when old anthropogenic disturbance features are newly disturbed age can be reset to '0'. This way, regeneration of vegetation in disturbed cells (i.e. probability of recovery) of antrhopogenic disturbance features can be a function of feature type and age.
+- Expansion of other disturbance features. I.e. development of forestry roads within forest management agreement (FMA) boundaries, new seismic lines, and other features.
+
+**Links to other modules**
+- Timber harvesting: Keep track of cut-block location and age.
