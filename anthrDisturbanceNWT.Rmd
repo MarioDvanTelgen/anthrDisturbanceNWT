@@ -13,34 +13,21 @@ This module updates a provided anthropogenic disturbance vector layer by adding 
 
 ```{r module_usage}
 library(SpaDES)
+library(raster)
 
-setPaths(modulePath = file.path("D:/GitHub/ADM/modules"))
+setPaths(modulePath = file.path("D:/GitHub/modules"))
 # getPaths() # shows where the 4 relevant paths are
 
 times <- list(start = 0, end = 1)
-
+mapRes <- 250
 parameters <- list(
   #.progress = list(type = "text", interval = 1), # for a progress bar
-  lineDensity = list(
-    # features = c("Seismic", "Road"), # all = c("Airstrip","Pipeline", "Powerline", "Railway", "Road", "Seismic", "Unknown")
-    features = c("Roads"), # all = c("Airstrip","Pipeline", "Powerline", "Railway", "Road", "Seismic", "Unknown") # use "disturbanceX" 'Roads' if lineFeatures are 
-    searchRadius = 10000, # meters; 10, 10000 (test, Roads) # sigma in gaussian, xmax in uniform
-    resolution = 250,# meters; 1, 250 (test, Roads) # eps (width and height of pixels)
-    method = "FFT", # c("FFT", "focal")
-    tileDims = rep(2, 2)**9, # c(256,256), 2319.03 @ 1024dims; 2263.36 secs @ 2048dims
-    boundaryEffect = "lethal", # only worked with method "FFT".
-    noiseRemoval = TRUE, # removes all below minimal density
-    .developmentInterval = 1,
-    .plotInitialTime = 0,
-    .plotInterval = 1,
-    .writeInitialTime = 0,
-    .writeInterval = 1),
   anthrDisturbanceNWT = list(
     features = c("Airstrip", "Pipeline", "Powerline", "Railway", "Seismic", "Unknown"), # all = c("Airstrip","Pipeline", "Powerline", "Railway", "Road", "Seismic", "Unknown")
     .developmentInterval = 1)
 )
 
-modules <- list("anthrDisturbanceNWT", "lineDensity")
+modules <- list("anthrDisturbanceNWT")
 objects <- list()
 inputs <- list()
 outputs <- list()
@@ -52,9 +39,6 @@ dev(); clearPlot()
 mySimOut <- spades(mySim)
 
 mySimOut$anthrDisturb
-mySimOut$bufferMap
-mySimOut$LFDensMap
-
 ```
 
 # Events
@@ -111,6 +95,7 @@ Currently the module only adds features. Features do not deteriorate and no othe
 - Deterioration of anthropogenic features can be based on 'Class' (e.g. roads vs. seismic lines) and 'subClass' (e.g. paved vs. unpaved roads).
 - Tracking and mapping of feature metrics. E.g. if feature age is tracked and a feature age raster-map created, this could be used as a metric for vegetation regeneration in disturbed areas. I.e. disturbance features do exist in the `anthrDisturb` object, but individual pixels in the vegetation map can recover, depending on feature type and age, and when old anthropogenic disturbance features are newly disturbed age can be reset to '0'. This way, regeneration of vegetation in disturbed cells (i.e. probability of recovery) of antrhopogenic disturbance features can be a function of feature type and age.
 - Expansion of other disturbance features. I.e. development of forestry roads within forest management agreement (FMA) boundaries, new seismic lines, and other features.
+- Enable road replacement: E.g. part of the proposed MVH will 'replace' existing roads, thus not adding much to i.e. overall road density in those areas. In the current model, however, the line is simply added, without replacing any roads in these sections, thus adding a bit more to road density than in reality would be.
 
 **Links to other modules**
 - Timber harvesting: Keep track of cut-block location and age.
