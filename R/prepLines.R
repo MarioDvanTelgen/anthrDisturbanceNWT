@@ -24,7 +24,7 @@ prepLines <- function(lines, template){
         idx <- which(crs != proj4string(template))
         crs(lines[[idx]]) <- proj4string(template)
       } else {
-        message("CRS of imputObjects all equal to template; No need for reprojection")
+        message("CRS of imputObjects all equal to template. No need to reproject")
       }
     } else {
       if(exists("projectCRS")) { # if no crs available, set to project crs
