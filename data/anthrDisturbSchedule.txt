@@ -1,2 +1,2 @@
-Class	name	shortName	planTime	IDcol	featureID	targetFile	url
-"Road"	"Proposed McKenzie Valley Highway"	"propMVH"	1	"ID"	1	"proposed_mackezie_valley_highway.shp"	"https://drive.google.com/open?id=1XEwhi-6AVuOfnoTWBowr4wiUI3HEiMo4"
+planTime	Class	name	shortName	IDcol	featureID	targetFile	url
+1	"Road"	"Proposed McKenzie Valley Highway"	"propMVH"	"ID"	1	"proposed_mackezie_valley_highway.shp"	"https://drive.google.com/open?id=1XEwhi-6AVuOfnoTWBowr4wiUI3HEiMo4"
